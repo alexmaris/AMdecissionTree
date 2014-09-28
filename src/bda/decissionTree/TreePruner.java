@@ -16,9 +16,12 @@ public class TreePruner {
 	}
 	
 	
-	public TreeBranch ReducedErrorPruner(TreeBranch tree, DataInput[] data){
+	public TreeBranch ReducedErrorPruner(TreeBranch tree){
 		
 		for(TreeBranch branch: tree.Children){
+			if(!branch.isLeaf()){
+				ReducedErrorPruner(branch);
+			}
 			// Calculate how pruning the branch improves error accuracy on the test data
 			//double treeError = 
 			
@@ -29,6 +32,11 @@ public class TreePruner {
 		}
 		
 		return null;
+	}
+	
+	public void Ten_x_CrossValidation(TreeBranch tree, DataInput[] data){
+		// Split data into 10 parts
+		
 	}
 	
 }
