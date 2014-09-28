@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.StringTokenizer;
 
 public class DecisionTreeID3 {
@@ -159,17 +160,30 @@ public class DecisionTreeID3 {
 			// If the attribute matches the value that we want to split on
 			// make a new DataInput and add it to the returnDataSet
 			if (data[i].Attributes[attributeLocation] == value) {
-				DataInput reducedInput = new DataInput();
 				
-				reducedInput.Attributes = Arrays.copyOfRange(data[i].Attributes, attributeLocation + 1,
-						data[i].Attributes.length);
+				ArrayList<Double> tempAttributes = new ArrayList<Double>();
+				
+				for (int j = 0; j < data[i].Attributes.length; j++) {
+					if(j != attributeLocation){
+						tempAttributes.add(data[i].Attributes[j]);
+					}
+				}
+				
+				DataInput reducedInput = new DataInput(tempAttributes.size());
+				
+				for (int j = 0; j < tempAttributes.size(); j++) {
+					reducedInput.Attributes[j] = tempAttributes.get(j);
+				}
+				
+				/*reducedInput.Attributes = Arrays.copyOfRange(data[i].Attributes, attributeLocation + 1,
+						data[i].Attributes.length);*/
 				reducedInput.Classification = data[i].Classification;
 
 				returnDataSet.add(reducedInput);
 			}
 		}
 
-		return returnDataSet.toArray(new DataInput[returnDataSet.size()]);
+		return returnDataSet.toArray(new DataInput[0]);
 	}
 
 	/**
