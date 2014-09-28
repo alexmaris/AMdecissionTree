@@ -27,40 +27,9 @@ public class DecisionTreeID3 {
 		}
 
 		DecisionTreeID3 dt = new DecisionTreeID3();
-		int ret = dt.loadData(args[0]);
-
-		// TODO: this is already in the data file...read it from there
-		ArrayList<Integer> attributeSet = new ArrayList<Integer>();
-		String[] attributes = new String[] { "sepal-length", "sepal-width", "petal-length", "petal-width" };
-		for (int i = 0; i < attributes.length; i++) {
-			attributeSet.add(i);
-		}
-
-		// TODO: this is a copy of the data in the HashMap...change that prop
-		DataInput[] dataTest = dt.dataSet.values().toArray(new DataInput[dt.dataSet.size()]);
-
-		TreeBranch branch = dt.createTree(dataTest, attributeSet, attributes, null);
-
-		System.out.println("Decission Tree - using ID3:");
-		DecisionTreeID3.printTree(branch, 1);
-
-		if (ret == 0) {
-			System.out.println("Finished loading data file with " + dt.dataSet.size() + " records.");
-		}
-
-		Classifier classifier = new Classifier(attributes);
-		DataInput d = new DataInput(new double[] { 4.6, 3.4, 1.4, 0.3 }, "");
-		DataInput d2 = new DataInput(new double[] { 6.3, 2.8, 5.1, 1.5 }, "");
-		DataInput d3 = new DataInput(new double[] { 6.1, 3.0, 4.9, 1.8 }, "");
-
-		System.out.println("Classifying (4.6,3.4,1.4,0.3,Iris-setosa) :" + classifier.Classify(branch, d));
-		System.out
-				.println("Classifying (6.3,2.8,5.1,1.5,Iris-virginica) :" + classifier.Classify(branch, d2));
-		System.out
-				.println("Classifying (6.1,3.0,4.9,1.8,Iris-virginica) :" + classifier.Classify(branch, d3));
+		dt.TestIrisDataSet(args[0]);
 
 		// Uncomment to run 'tests' at the bottom
-		// DecissionTreeID3 dt = new DecissionTreeID3();
 		// dt.testsThatBelongInTestingFramework();
 
 		return;
@@ -135,7 +104,7 @@ public class DecisionTreeID3 {
 			String[] subNames = new String[subAttributes.size()];
 
 			for (int i = 0; i < subAttributes.size(); i++) {
-				subNames[i] = attributeNames[subAttributes.get(i)];
+				subNames[i] = attributes[subAttributes.get(i)];
 			}
 
 			branch.Children.add(createTree(splitDataSet(data, bestAttribute, d.doubleValue()), subAttributes,
@@ -189,7 +158,7 @@ public class DecisionTreeID3 {
 	/**
 	 * 
 	 * @param data Array of DataInput to calculate the entropy of
-	 * @return Entropy calculation value
+	 * @return calculated Entropy value
 	 */
 	protected double calculateEntropy(DataInput[] data) {
 
@@ -212,7 +181,7 @@ public class DecisionTreeID3 {
 
 		for (String key : classCounts.keySet()) {
 			double probability = (double) classCounts.get(key) / dataCount;
-			entropy -= probability * Math.log(probability);
+			entropy -= (probability * Math.log(probability));
 		}
 
 		return entropy;
@@ -227,9 +196,7 @@ public class DecisionTreeID3 {
 	 *         among its attributes
 	 */
 	protected int findBestAttributeForSplit(DataInput[] data) {
-		// Set a large number for the base Entropy, for some
-		// reason
-		double baseEntropy = 10000000;// calculateEntropy(data);
+		double baseEntropy =  calculateEntropy(data);
 		double bestInfoGain = 0.0;
 		int bestAttribute = -1;
 		int numOfAttribute = data[0].Attributes.length;
@@ -242,11 +209,11 @@ public class DecisionTreeID3 {
 			// Get the entropy for each data set split
 			for (Double value : uniqueValues) {
 				DataInput[] subsetData = splitDataSet(data, i, value);
-				double prob = subsetData.length / (double) subsetData.length;
+				double prob = subsetData.length / (double) data.length;
 
 				newEntropy += prob * calculateEntropy(subsetData);
 			}
-
+			
 			double infoGain = baseEntropy - newEntropy;
 			// Select the best information gain and attribute
 			if (infoGain > bestInfoGain) {
@@ -419,6 +386,41 @@ public class DecisionTreeID3 {
 			printTree(branch.Children.get(i), level);
 		}
 
+	}
+	
+	public void TestIrisDataSet(String fileName){
+		DecisionTreeID3 dt = new DecisionTreeID3();
+		int ret = dt.loadData(fileName);
+
+		// TODO: this is already in the data file...read it from there
+		ArrayList<Integer> attributeSet = new ArrayList<Integer>();
+		String[] attributes = new String[] { "sepal-length", "sepal-width", "petal-length", "petal-width" };
+		for (int i = 0; i < attributes.length; i++) {
+			attributeSet.add(i);
+		}
+
+		// TODO: this is a copy of the data in the HashMap...change that prop
+		DataInput[] dataTest = dt.dataSet.values().toArray(new DataInput[dt.dataSet.size()]);
+
+		TreeBranch branch = dt.createTree(dataTest, attributeSet, attributes, null);
+
+		System.out.println("Decission Tree - using ID3:");
+		DecisionTreeID3.printTree(branch, 1);
+
+		if (ret == 0) {
+			System.out.println("Finished loading data file with " + dt.dataSet.size() + " records.");
+		}
+
+		Classifier classifier = new Classifier(attributes);
+		DataInput d = new DataInput(new double[] { 4.6, 3.4, 1.4, 0.3 }, "");
+		DataInput d2 = new DataInput(new double[] { 6.3, 2.8, 5.1, 1.5 }, "");
+		DataInput d3 = new DataInput(new double[] { 6.1, 3.0, 4.9, 1.8 }, "");
+
+		System.out.println("Classifying (4.6,3.4,1.4,0.3,Iris-setosa) :" + classifier.Classify(branch, d));
+		System.out
+				.println("Classifying (6.3,2.8,5.1,1.5,Iris-virginica) :" + classifier.Classify(branch, d2));
+		System.out
+				.println("Classifying (6.1,3.0,4.9,1.8,Iris-virginica) :" + classifier.Classify(branch, d3));
 	}
 
 	public static String padLeft(String s, int n) {
