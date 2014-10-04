@@ -1,6 +1,12 @@
 package bda.decissionTree;
 
+
 public class DataInput {
+	
+	public double[] Attributes;
+	public String Classification;
+	public String GuessedClassification;
+
 
 	/**
 	 * Default constructor
@@ -41,7 +47,17 @@ public class DataInput {
 		this.Classification = fileLine[fileLine.length - 1];
 	}
 
-	public double[] Attributes;
-	public String Classification;
+	@Override
+	public String toString(){
+		String str = "[";
+		for (int i = 0; i < Attributes.length; i++) {
+			str += (i != Attributes.length -1)? Attributes[i] + ",": Attributes[i];
+		}
+		
+		str += "] - (" + Classification + ") -> " + GuessedClassification;
+
+		return str;
+		
+	}
 
 }

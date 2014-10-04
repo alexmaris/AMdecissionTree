@@ -8,26 +8,48 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.List;
 import java.util.StringTokenizer;
 
 public class DecisionTreeID3 {
 
-	String[] attributes;
+	String[] attributeNames;
 	int attributeCount;
+	ArrayList<Integer> attributeList = new ArrayList<Integer>();
 
 	public HashMap<Integer, DataInput> dataSet;
 
 	public static void main(String[] args) {
-
 		if (args.length != 1) {
-			System.err.println("Please pass in the location of the data file (csv).");
+			System.err
+					.println("Please pass in the location of the data file (csv).");
+			System.err
+					.println("Ensure the file contains attribute names on the first line.");
 
 			return;
 		}
 
+		// Load data that will be used to create and test the decission tree
 		DecisionTreeID3 dt = new DecisionTreeID3();
-		dt.TestIrisDataSet(args[0]);
+		int ret = dt.loadData(args[0]);
+
+		String[] attributeNames = dt.attributeNames;
+
+		// TODO: this is a copy of the data in the HashMap...change that prop
+		DataInput[] dataTest = dt.dataSet.values().toArray(new DataInput[0]);
+
+		TreeBranch branch = dt.createTree(dataTest, attributeNames, null);
+
+		TreePruner prunner = new TreePruner();
+
+		prunner.ReducedErrorPruner(branch);
+
+		prunner.Ten_x_CrossValidation(dataTest, attributeNames);
+
+		/*
+		 * DecisionTreeID3 dt = new DecisionTreeID3();
+		 * dt.TestIrisDataSet(args[0]);
+		 */
 
 		// Uncomment to run 'tests' at the bottom
 		// dt.testsThatBelongInTestingFramework();
@@ -44,16 +66,23 @@ public class DecisionTreeID3 {
 
 	/**
 	 * 
-	 * @param data Array of DataInput values to use during the tree/branch creation
-	 * @param attributeSet List of attributes in the 'data' parameter
-	 * @param attributeNames Array of attribute names represented in the attributeSet
-	 * @param value Value of the attribute that this branch is created for, used when called recursively
-	 * @return TreeBranch containing other branches or the classification of the parent's split in case of a leaf
+	 * @param data
+	 *            Array of DataInput values to use during the tree/branch
+	 *            creation
+	 * @param attributeSet
+	 *            List of attributes in the 'data' parameter
+	 * @param attributeNames
+	 *            Array of attribute names represented in the attributeSet
+	 * @param value
+	 *            Value of the attribute that this branch is created for, used
+	 *            when called recursively
+	 * @return TreeBranch containing other branches or the classification of the
+	 *         parent's split in case of a leaf
 	 * 
 	 *         Assume that the target attribute is the DataInput.Classification
 	 */
 	// TODO: Combine the attributeSet and attributeNames params
-	public TreeBranch createTree(DataInput[] data, ArrayList<Integer> attributeSet, String[] attributeNames,
+	public TreeBranch createTree(DataInput[] data, String[] attributeNames,
 			Double value) {
 
 		ArrayList<String> classList = new ArrayList<String>();
@@ -68,7 +97,8 @@ public class DecisionTreeID3 {
 		}
 
 		// If all the classes are equal, return an empty TreeBranch
-		if (Collections.frequency(classList, classList.get(0)) == classList.size()) {
+		if (Collections.frequency(classList, classList.get(0)) == classList
+				.size()) {
 			branch.Classification = classList.get(0);
 			branch.AttributeValue = value;
 			return branch;
@@ -89,39 +119,101 @@ public class DecisionTreeID3 {
 		if (bestAttribute >= 0)
 			branch.BestAttribute = attributeNames[bestAttribute];
 
-		attributeSet.remove(bestAttribute);
+		// attributeSet.remove(bestAttribute);
 
-		// Get a set of values that we can populate the tree with
-		HashSet<Double> uniqueValues = new HashSet<Double>();
+		// Get a set of unique values that we can populate the tree with
+		ArrayList<Double> uniqueValues = new ArrayList<Double>();
 		for (DataInput d : data) {
 			if (!uniqueValues.contains(d.Attributes[bestAttribute])) {
 				uniqueValues.add(d.Attributes[bestAttribute]);
 			}
 		}
+		Collections.sort(uniqueValues);
 
-		for (Double d : uniqueValues) {
-			ArrayList<Integer> subAttributes = new ArrayList<Integer>(attributeSet);
-			String[] subNames = new String[subAttributes.size()];
+		// If there's more than 2 values, try to split down the middle
+		if (uniqueValues.size() > 2) {
+			double splitValue = uniqueValues.get(uniqueValues.size() / 2);
+			branch.AttributeValue = splitValue;
+			branch.BestAttribute = attributeNames[bestAttribute];
 
-			for (int i = 0; i < subAttributes.size(); i++) {
-				subNames[i] = attributes[subAttributes.get(i)];
+			List<DataInput> rightData = new ArrayList<DataInput>();
+			List<DataInput> leftData = new ArrayList<DataInput>();
+			for (double d : uniqueValues) {
+				// Combine all the data that should be on the left
+				if (d <= splitValue) {
+					leftData.addAll(Arrays.asList(getDataSet(data,
+							bestAttribute, d)));
+				}
+
+				// Combine all the data that should be on the right
+				if (d > splitValue) {
+					rightData.addAll(Arrays.asList(getDataSet(data,
+							bestAttribute, d)));
+				}
 			}
 
-			branch.Children.add(createTree(splitDataSet(data, bestAttribute, d.doubleValue()), subAttributes,
-					subNames, d));
+			branch.leftNode = createTree(leftData.toArray(new DataInput[0]),
+					attributeNames, splitValue);
+
+			branch.rightNode = createTree(rightData.toArray(new DataInput[0]),
+					attributeNames, splitValue);
+		} else {
+			// Manually direct the left and right nodes
+			if (uniqueValues.get(0) <= value) {
+				branch.leftNode = createTree(
+						getDataSet(data, bestAttribute, uniqueValues.get(0)),
+						attributeNames, uniqueValues.get(0));
+			} else {
+				branch.rightNode = createTree(
+						getDataSet(data, bestAttribute, uniqueValues.get(0)),
+						attributeNames, uniqueValues.get(0));
+
+			}
+
+			if (uniqueValues.size() == 2) {
+				if (uniqueValues.get(1) <= value) {
+					branch.leftNode = createTree(
+							getDataSet(data, bestAttribute, uniqueValues.get(1)),
+							attributeNames, uniqueValues.get(1));
+				} else {
+					branch.rightNode = createTree(
+							getDataSet(data, bestAttribute, uniqueValues.get(1)),
+							attributeNames, uniqueValues.get(1));
+
+				}
+			}
+
 		}
+
+		/*
+		 * for (Double d : uniqueValues) {
+		 * 
+		 * 
+		 * 
+		 * 
+		 * branch.Children.add(createTree( splitDataSet(data, bestAttribute,
+		 * d.doubleValue()), subAttributes, subNames, d)); }
+		 */
 
 		return branch;
 	}
 
 	/**
 	 * 
-	 * @param data Array of DataInput elements that the split will be performed on
-	 * @param attributeLocation Location of the attribute to split on
-	 * @param value Value of the attribute to split on
+	 * @param data
+	 *            Array of DataInput elements that the split will be performed
+	 *            on
+	 * @param attributeLocation
+	 *            Location of the attribute to split on
+	 * @param value
+	 *            Value of the attribute to split on
 	 * @return Array of DataInput elements containing the split
+	 * 
+	 *         Create subsets of the DataInput array by splitting on the
+	 *         requested attribute and value
 	 */
-	protected DataInput[] splitDataSet(DataInput[] data, int attributeLocation, double value) {
+	protected DataInput[] splitDataSet(DataInput[] data, int attributeLocation,
+			double value) {
 		ArrayList<DataInput> returnDataSet = new ArrayList<DataInput>();
 
 		for (int i = 0; i < data.length; i++) {
@@ -129,23 +221,26 @@ public class DecisionTreeID3 {
 			// If the attribute matches the value that we want to split on
 			// make a new DataInput and add it to the returnDataSet
 			if (data[i].Attributes[attributeLocation] == value) {
-				
+
 				ArrayList<Double> tempAttributes = new ArrayList<Double>();
-				
+
 				for (int j = 0; j < data[i].Attributes.length; j++) {
-					if(j != attributeLocation){
+					if (j != attributeLocation) {
 						tempAttributes.add(data[i].Attributes[j]);
 					}
 				}
-				
+
 				DataInput reducedInput = new DataInput(tempAttributes.size());
-				
+
 				for (int j = 0; j < tempAttributes.size(); j++) {
 					reducedInput.Attributes[j] = tempAttributes.get(j);
 				}
-				
-				/*reducedInput.Attributes = Arrays.copyOfRange(data[i].Attributes, attributeLocation + 1,
-						data[i].Attributes.length);*/
+
+				/*
+				 * reducedInput.Attributes =
+				 * Arrays.copyOfRange(data[i].Attributes, attributeLocation + 1,
+				 * data[i].Attributes.length);
+				 */
 				reducedInput.Classification = data[i].Classification;
 
 				returnDataSet.add(reducedInput);
@@ -157,7 +252,32 @@ public class DecisionTreeID3 {
 
 	/**
 	 * 
-	 * @param data Array of DataInput to calculate the entropy of
+	 * @param data
+	 *            Array of DataInput elements
+	 * @param attributeLocation
+	 *            Location of the attribute to search on
+	 * @param value
+	 *            Value of the attribute to search on
+	 * @return Array of DataInput elements containing the DataInputs with the
+	 *         matched element/value combination
+	 */
+	protected DataInput[] getDataSet(DataInput[] data, int attributeLocation,
+			double value) {
+		ArrayList<DataInput> returnDataSet = new ArrayList<DataInput>();
+
+		for (int i = 0; i < data.length; i++) {
+
+			if (data[i].Attributes[attributeLocation] == value) {
+				returnDataSet.add(data[i]);
+			}
+		}
+		return returnDataSet.toArray(new DataInput[0]);
+	}
+
+	/**
+	 * 
+	 * @param data
+	 *            Array of DataInput to calculate the entropy of
 	 * @return calculated Entropy value
 	 */
 	protected double calculateEntropy(DataInput[] data) {
@@ -181,7 +301,7 @@ public class DecisionTreeID3 {
 
 		for (String key : classCounts.keySet()) {
 			double probability = (double) classCounts.get(key) / dataCount;
-			entropy -= (probability * Math.log(probability));
+			entropy -= (probability * (Math.log(probability) / Math.log(2)));
 		}
 
 		return entropy;
@@ -189,14 +309,16 @@ public class DecisionTreeID3 {
 
 	/**
 	 * 
-	 * @param data Array of DataInput used in determining which attribute to split on
+	 * @param data
+	 *            Array of DataInput used in determining which attribute to
+	 *            split on
 	 * @return Attribute location that best splits the data
 	 * 
-	 *         Find the attribute that generates the greatest information gain when splitting the DataInput array
-	 *         among its attributes
+	 *         Find the attribute that generates the greatest information gain
+	 *         when splitting the DataInput array among its attributes
 	 */
 	protected int findBestAttributeForSplit(DataInput[] data) {
-		double baseEntropy =  calculateEntropy(data);
+		double baseEntropy = calculateEntropy(data);
 		double bestInfoGain = 0.0;
 		int bestAttribute = -1;
 		int numOfAttribute = data[0].Attributes.length;
@@ -213,7 +335,7 @@ public class DecisionTreeID3 {
 
 				newEntropy += prob * calculateEntropy(subsetData);
 			}
-			
+
 			double infoGain = baseEntropy - newEntropy;
 			// Select the best information gain and attribute
 			if (infoGain > bestInfoGain) {
@@ -225,7 +347,8 @@ public class DecisionTreeID3 {
 		return bestAttribute;
 	}
 
-	protected HashSet<Double> getUniqueValues(DataInput[] data, int attributeLocation) {
+	protected HashSet<Double> getUniqueValues(DataInput[] data,
+			int attributeLocation) {
 		HashSet<Double> uniqueVals = new HashSet<Double>();
 		for (int i = 0; i < data.length; i++) {
 			if (!uniqueVals.contains(data[i].Attributes[attributeLocation]))
@@ -237,7 +360,8 @@ public class DecisionTreeID3 {
 
 	/**
 	 * 
-	 * @param values Array of string values to use for voting
+	 * @param values
+	 *            Array of string values to use for voting
 	 * @return Most common String value in the values array
 	 */
 	protected String getMajorityCount(String[] values) {
@@ -279,14 +403,15 @@ public class DecisionTreeID3 {
 			if (attribCount < 2) {
 				System.err
 						.println("Make sure the first line of the data file contain the attributes (at least 1 attribute and a class)");
-				System.err.println("Example first line: attribute1, attribute2, className");
+				System.err
+						.println("Example first line: attribute1, attribute2, className");
 				return 1;
 			}
 
-			attributes = new String[attribCount];
+			attributeNames = new String[attribCount - 1];
 
-			for (int i = 0; i < attribCount; i++) {
-				attributes[i] = tokenizer.nextToken();
+			for (int i = 0; i < attribCount - 1; i++) {
+				attributeNames[i] = tokenizer.nextToken().trim();
 			}
 
 			// Begin loading the remainder of the data file
@@ -298,7 +423,8 @@ public class DecisionTreeID3 {
 					tokenizer = new StringTokenizer(line, ",");
 
 					if (tokenizer.countTokens() != attribCount)
-						throw new Exception("Expected " + attribCount + " attributes but encountered "
+						throw new Exception("Expected " + attribCount
+								+ " attributes but encountered "
 								+ tokenizer.countTokens());
 
 					String[] input = new String[attribCount];
@@ -316,8 +442,9 @@ public class DecisionTreeID3 {
 			return 0;
 
 		} catch (FileNotFoundException e) {
-			System.err.println("Could not read the file specified, please check the path (path = " + fileName
-					+ ")");
+			System.err
+					.println("Could not read the file specified, please check the path (path = "
+							+ fileName + ")");
 			return 1;
 		} catch (Exception e) {
 			System.err.println("Error processing the specified file.");
@@ -330,40 +457,49 @@ public class DecisionTreeID3 {
 	public void testsThatBelongInTestingFramework() {
 		System.out.println("----START TESTS----");
 
-		DataInput[] testdata = { new DataInput(new double[] { 1, 1, 1 }, "yes"),
+		DataInput[] testdata = {
+				new DataInput(new double[] { 1, 1, 1 }, "yes"),
 				new DataInput(new double[] { 1, 1, 1 }, "yes"),
 				new DataInput(new double[] { 1, 0, 1 }, "yes"),
-				new DataInput(new double[] { 0, 1, 0 }, "no"), new DataInput(new double[] { 0, 1, 0 }, "no") };
+				new DataInput(new double[] { 0, 1, 0 }, "no"),
+				new DataInput(new double[] { 0, 1, 0 }, "no") };
 
-		System.out.println("getEntropy() - for testData:" + this.calculateEntropy(testdata));
+		System.out.println("getEntropy() - for testData:"
+				+ this.calculateEntropy(testdata));
 
 		DataInput[] t = this.splitDataSet(testdata, 0, 1);
 		System.out.println("splitDataSet() - expecting 3 items: " + t.length);
-		System.out.println("splitDataSet() - expecting 2 attributes  for remaning data: "
-				+ t[0].Attributes.length);
+		System.out
+				.println("splitDataSet() - expecting 2 attributes  for remaning data: "
+						+ t[0].Attributes.length);
 
 		HashSet<Double> td = this.getUniqueValues(testdata, 0);
-		System.out.println("getUniqueValues() - expecting 2 items: " + td.size());
+		System.out.println("getUniqueValues() - expecting 2 items: "
+				+ td.size());
 
 		System.out.println("findBestAttributeForSplit() - expecting 0 : "
 				+ this.findBestAttributeForSplit(testdata));
 
-		attributes = new String[] { "no surfacing", "flippers" };
+		attributeNames = new String[] { "no surfacing", "flippers" };
 
 		ArrayList<Integer> attributeSet = new ArrayList<Integer>();
 		attributeSet.add(0);
 		attributeSet.add(1);
 		DataInput[] testdata2 = { new DataInput(new double[] { 1, 1 }, "yes"),
-				new DataInput(new double[] { 1, 1 }, "yes"), new DataInput(new double[] { 1, 0 }, "no"),
-				new DataInput(new double[] { 0, 1 }, "no"), new DataInput(new double[] { 0, 1 }, "no") };
+				new DataInput(new double[] { 1, 1 }, "yes"),
+				new DataInput(new double[] { 1, 0 }, "no"),
+				new DataInput(new double[] { 0, 1 }, "no"),
+				new DataInput(new double[] { 0, 1 }, "no") };
 
-		TreeBranch branch = this.createTree(testdata2, attributeSet, attributes, null);
+		TreeBranch branch = this.createTree(testdata2, attributeNames, null);
 		System.out.println("createTree() - ");
 		printTree(branch, 1);
 
-		Classifier classifier = new Classifier(attributes);
-		String classification = classifier.Classify(branch, new DataInput(new double[] { 1, 0 }, ""));
-		System.out.println("classifier.Classify() - expecting 'yes' : " + classification);
+		Classifier classifier = new Classifier(attributeNames);
+		String classification = classifier.Classify(branch, new DataInput(
+				new double[] { 1, 0 }, ""));
+		System.out.println("classifier.Classify() - expecting 'yes' : "
+				+ classification);
 
 		System.out.println("----END TESTS----");
 	}
@@ -374,7 +510,7 @@ public class DecisionTreeID3 {
 		System.out.print("Classification: " + branch.Classification + ", ");
 		System.out.print("AttributeValue: " + branch.AttributeValue + ", ");
 		System.out.print("BestAttribute: " + branch.BestAttribute + ", ");
-		System.out.print("IsBranchLeaf: " + branch.isLeaf() + ", ");
+		System.out.print("IsLeaf: " + branch.isLeaf() + ", ");
 		System.out.print("Examples.length: " + branch.Examples.length);
 		System.out.print("}");
 
@@ -382,45 +518,59 @@ public class DecisionTreeID3 {
 
 		level = level + 15;
 
-		for (int i = 0; i < branch.Children.size(); i++) {
-			printTree(branch.Children.get(i), level);
+		if (branch.rightNode != null) {
+			printTree(branch.rightNode, level);
+		}
+
+		if (branch.leftNode != null) {
+			printTree(branch.leftNode, level);
 		}
 
 	}
-	
-	public void TestIrisDataSet(String fileName){
+
+	public void TestIrisDataSet(String fileName) {
 		DecisionTreeID3 dt = new DecisionTreeID3();
 		int ret = dt.loadData(fileName);
 
 		// TODO: this is already in the data file...read it from there
 		ArrayList<Integer> attributeSet = new ArrayList<Integer>();
-		String[] attributes = new String[] { "sepal-length", "sepal-width", "petal-length", "petal-width" };
+		String[] attributes = new String[] { "sepal-length", "sepal-width",
+				"petal-length", "petal-width" };
 		for (int i = 0; i < attributes.length; i++) {
 			attributeSet.add(i);
 		}
 
 		// TODO: this is a copy of the data in the HashMap...change that prop
-		DataInput[] dataTest = dt.dataSet.values().toArray(new DataInput[dt.dataSet.size()]);
+		DataInput[] dataTest = dt.dataSet.values().toArray(
+				new DataInput[dt.dataSet.size()]);
 
-		TreeBranch branch = dt.createTree(dataTest, attributeSet, attributes, null);
+		TreeBranch branch = dt.createTree(dataTest, attributes, null);
 
 		System.out.println("Decission Tree - using ID3:");
 		DecisionTreeID3.printTree(branch, 1);
 
 		if (ret == 0) {
-			System.out.println("Finished loading data file with " + dt.dataSet.size() + " records.");
+			System.out.println("Finished loading data file with "
+					+ dt.dataSet.size() + " records.");
 		}
 
 		Classifier classifier = new Classifier(attributes);
 		DataInput d = new DataInput(new double[] { 4.6, 3.4, 1.4, 0.3 }, "");
 		DataInput d2 = new DataInput(new double[] { 6.3, 2.8, 5.1, 1.5 }, "");
 		DataInput d3 = new DataInput(new double[] { 6.1, 3.0, 4.9, 1.8 }, "");
+		DataInput d4 = new DataInput(new double[] { 5.2, 3.5, 1.5, 0.2 }, "");
+		DataInput d5 = new DataInput(new double[] { 5.8, 2.7, 3.9, 1.2 }, "");
 
-		System.out.println("Classifying (4.6,3.4,1.4,0.3,Iris-setosa) :" + classifier.Classify(branch, d));
-		System.out
-				.println("Classifying (6.3,2.8,5.1,1.5,Iris-virginica) :" + classifier.Classify(branch, d2));
-		System.out
-				.println("Classifying (6.1,3.0,4.9,1.8,Iris-virginica) :" + classifier.Classify(branch, d3));
+		System.out.println("Classifying (4.6,3.4,1.4,0.3,Iris-setosa) :"
+				+ classifier.Classify(branch, d));
+		System.out.println("Classifying (5.2,3.5,1.5,0.2,Iris-setosa) :"
+				+ classifier.Classify(branch, d4));
+		System.out.println("Classifying (5.8,2.7,3.9,1.2,Iris-versicolor) :"
+				+ classifier.Classify(branch, d5));
+		System.out.println("Classifying (6.3,2.8,5.1,1.5,Iris-virginica) :"
+				+ classifier.Classify(branch, d2));
+		System.out.println("Classifying (6.1,3.0,4.9,1.8,Iris-virginica) :"
+				+ classifier.Classify(branch, d3));
 	}
 
 	public static String padLeft(String s, int n) {

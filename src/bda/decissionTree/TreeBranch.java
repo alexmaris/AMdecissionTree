@@ -12,7 +12,8 @@ public class TreeBranch {
 	public String BestAttribute;
 	public Double AttributeValue;
 	
-	public TreeBranch Parent;
+	public TreeBranch rightNode;
+	public TreeBranch leftNode;
 	
 	public TreeBranch() {
 		//Decission = -1;
@@ -21,7 +22,8 @@ public class TreeBranch {
 	}
 	
 	public boolean isLeaf(){
-		return Children.isEmpty();
+		//return Children.isEmpty();
+		return (rightNode == null & leftNode == null);
 	}
 
 }
