@@ -176,7 +176,7 @@ public class TreePruner {
 			itr++;
 		}
 
-		DecisionTreeID3.printTree(bestTree, 1);
+		//DecisionTreeID3.printTree(bestTree, 1);
 
 		String[] uniqueClassifications = getUniqueClassifications(classifiedData);
 		printConfusionMatrix(classifiedData, uniqueClassifications);

@@ -138,7 +138,7 @@ public class DecisionTreeID3 {
 		// If there's more than 2 values, try to split down the middle
 		if (uniqueValues.size() > 2) {
 			//double splitValue = uniqueValues.get(uniqueValues.size() / 2);
-			double splitValue = findBestSplitValue(data, bestAttribute);
+			double splitValue = findBestValueForSplit(data, bestAttribute);
 			branch.AttributeValue = splitValue;
 			branch.BestAttribute = attributeNames[bestAttribute];
 
@@ -201,7 +201,7 @@ public class DecisionTreeID3 {
 	 * @param attribute Attribute location that the search should focus on
 	 * @return value that best splits the data
 	 */
-	protected double findBestSplitValue(DataInput[] data, int attribute) {
+	protected double findBestValueForSplit(DataInput[] data, int attribute) {
 		// Get a set of unique values that we can populate the tree with
 		ArrayList<Double> uniqueValues = new ArrayList<Double>();
 		for (DataInput d : data) {
@@ -213,7 +213,7 @@ public class DecisionTreeID3 {
 
 		
 		double middlePoint = (uniqueValues.get(0) + uniqueValues.get(uniqueValues.size()-1))/2;
-		//middlePoint = Math.round(middlePoint * 100)/100;
+		middlePoint = Math.round(middlePoint * 100.0)/100.0;
 		
 		// Find what split point will get us data that a majority of the same class
 		while((middlePoint)  > uniqueValues.get(0)){
@@ -237,7 +237,7 @@ public class DecisionTreeID3 {
 			//TODO: clean up the code so we don't try to split the midpoint too many times
 			// If the totalCount is less than 3 we can be chasing a rabbit hole with the
 			// middlePoint so just split at this location
-			if(totalCount <= 3){
+			if(totalCount < 3){
 				return middlePoint;
 			}
 			
@@ -248,9 +248,13 @@ public class DecisionTreeID3 {
 				}
 			}
 			
-			// If we didn't find a good split point up to now, try re-splitting
+			// Make sure we're not splitting the values to a ridiculously small value
+			if(middlePoint <= ((uniqueValues.get(0) + middlePoint)/2.0 + 0.1)){
+				return middlePoint;
+			}
+				// If we didn't find a good split point up to now, try re-splitting
 			middlePoint = (uniqueValues.get(0) + middlePoint)/2;
-			
+			middlePoint = Math.round(middlePoint * 100.0)/100.0;
 		}
 		
 		return middlePoint;
