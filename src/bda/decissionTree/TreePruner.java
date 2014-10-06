@@ -161,6 +161,7 @@ public class TreePruner {
 		TreeBranch bestTree = null;
 		DataInput[] classifiedData = null;
 		double accuracy = 0;
+		double avgAccuracy = 0;
 		int itr = 0, chosen = 0;
 
 		for (TreeBranch tree : trees.keySet()) {
@@ -171,6 +172,7 @@ public class TreePruner {
 				classifiedData = trees.get(tree);
 				chosen = itr;
 			}
+			avgAccuracy += temp;
 			itr++;
 		}
 
@@ -178,8 +180,8 @@ public class TreePruner {
 
 		String[] uniqueClassifications = getUniqueClassifications(classifiedData);
 		printConfusionMatrix(classifiedData, uniqueClassifications);
-		System.out.format("\nAccuracy: %s ", accuracy);
-		System.out.format("\nTree was produced in itteration # %s ", chosen);
+		System.out.format("\nAverage accuracy: %s ", (avgAccuracy/trees.size()));
+		System.out.format("\nMost accurate tree was produced in itteration # %s ", chosen);
 	}
 
 	/**

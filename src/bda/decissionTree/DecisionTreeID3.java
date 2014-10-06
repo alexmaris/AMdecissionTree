@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.StringTokenizer;
 
 public class DecisionTreeID3 {
@@ -89,6 +90,10 @@ public class DecisionTreeID3 {
 
 		TreeBranch branch = new TreeBranch();
 		branch.Examples = data;
+		
+		if(data.length ==0){
+			return null;
+		}
 
 		// Get all the classifications that belong to this dataset
 		for (DataInput d : data) {
@@ -132,7 +137,8 @@ public class DecisionTreeID3 {
 
 		// If there's more than 2 values, try to split down the middle
 		if (uniqueValues.size() > 2) {
-			double splitValue = uniqueValues.get(uniqueValues.size() / 2);
+			//double splitValue = uniqueValues.get(uniqueValues.size() / 2);
+			double splitValue = findBestSplitValue(data, bestAttribute);
 			branch.AttributeValue = splitValue;
 			branch.BestAttribute = attributeNames[bestAttribute];
 
@@ -185,17 +191,70 @@ public class DecisionTreeID3 {
 
 		}
 
-		/*
-		 * for (Double d : uniqueValues) {
-		 * 
-		 * 
-		 * 
-		 * 
-		 * branch.Children.add(createTree( splitDataSet(data, bestAttribute,
-		 * d.doubleValue()), subAttributes, subNames, d)); }
-		 */
-
 		return branch;
+	}
+
+	/**
+	 * Find the split value that has the highest concentration of classifications
+	 * by splitting the dataset in half (binary search style)
+	 * @param data Array of DataInputs
+	 * @param attribute Attribute location that the search should focus on
+	 * @return value that best splits the data
+	 */
+	protected double findBestSplitValue(DataInput[] data, int attribute) {
+		// Get a set of unique values that we can populate the tree with
+		ArrayList<Double> uniqueValues = new ArrayList<Double>();
+		for (DataInput d : data) {
+			if (!uniqueValues.contains(d.Attributes[attribute])) {
+				uniqueValues.add(d.Attributes[attribute]);
+			}
+		}
+		Collections.sort(uniqueValues);
+
+		
+		double middlePoint = (uniqueValues.get(0) + uniqueValues.get(uniqueValues.size()-1))/2;
+		//middlePoint = Math.round(middlePoint * 100)/100;
+		
+		// Find what split point will get us data that a majority of the same class
+		while((middlePoint)  > uniqueValues.get(0)){
+			HashMap<String, Integer> classificationCounts = new HashMap<String, Integer>();
+			// Get a count of all the classifications in this data set
+			for(DataInput d: data){
+				if(d.Attributes[attribute] <= middlePoint){
+					if(!classificationCounts.containsKey(d.Classification)){
+						classificationCounts.put(d.Classification, 0);
+					}
+					classificationCounts.put(d.Classification, classificationCounts.get(d.Classification) +1);
+				}
+			}
+			// See which classifications is the majority 80%+ of the dataset
+			// otherwise keep splitting the values
+			int totalCount= 0;
+			for(int classificationCount: classificationCounts.values()){
+				totalCount += classificationCount;
+			}
+			
+			//TODO: clean up the code so we don't try to split the midpoint too many times
+			// If the totalCount is less than 3 we can be chasing a rabbit hole with the
+			// middlePoint so just split at this location
+			if(totalCount <= 3){
+				return middlePoint;
+			}
+			
+			for(String classification: classificationCounts.keySet()){
+				double frequency =(classificationCounts.get(classification).doubleValue() / totalCount); 
+				if( frequency >= 0.8 ){
+					return middlePoint;
+				}
+			}
+			
+			// If we didn't find a good split point up to now, try re-splitting
+			middlePoint = (uniqueValues.get(0) + middlePoint)/2;
+			
+		}
+		
+		return middlePoint;
+
 	}
 
 	/**
