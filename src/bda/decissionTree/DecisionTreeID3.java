@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.StringTokenizer;
+import java.util.Vector;
 
 public class DecisionTreeID3 {
 
@@ -70,8 +71,6 @@ public class DecisionTreeID3 {
 	 * @param data
 	 *            Array of DataInput values to use during the tree/branch
 	 *            creation
-	 * @param attributeSet
-	 *            List of attributes in the 'data' parameter
 	 * @param attributeNames
 	 *            Array of attribute names represented in the attributeSet
 	 * @param value
@@ -123,8 +122,9 @@ public class DecisionTreeID3 {
 		int bestAttribute = findBestAttributeForSplit(data);
 		if (bestAttribute >= 0)
 			branch.BestAttribute = attributeNames[bestAttribute];
-
-		// attributeSet.remove(bestAttribute);
+		
+		List<String> attributeSet = new ArrayList<String>(Arrays.asList(attributeNames));
+		attributeSet.remove(attributeNames[bestAttribute]);
 
 		// Get a set of unique values that we can populate the tree with
 		ArrayList<Double> uniqueValues = new ArrayList<Double>();
@@ -135,7 +135,7 @@ public class DecisionTreeID3 {
 		}
 		Collections.sort(uniqueValues);
 
-		// If there's more than 2 values, try to split down the middle
+		// If there's more than 2 values, try to find best value to split on
 		if (uniqueValues.size() > 2) {
 			//double splitValue = uniqueValues.get(uniqueValues.size() / 2);
 			double splitValue = findBestValueForSplit(data, bestAttribute);
@@ -147,44 +147,44 @@ public class DecisionTreeID3 {
 			for (double d : uniqueValues) {
 				// Combine all the data that should be on the left
 				if (d <= splitValue) {
-					leftData.addAll(Arrays.asList(getDataSet(data,
+					leftData.addAll(Arrays.asList(getDataSet2(data,
 							bestAttribute, d)));
 				}
 
 				// Combine all the data that should be on the right
 				if (d > splitValue) {
-					rightData.addAll(Arrays.asList(getDataSet(data,
+					rightData.addAll(Arrays.asList(getDataSet2(data,
 							bestAttribute, d)));
 				}
 			}
 
 			branch.leftNode = createTree(leftData.toArray(new DataInput[0]),
-					attributeNames, splitValue);
+					attributeSet.toArray(new String[0]), splitValue);
 
 			branch.rightNode = createTree(rightData.toArray(new DataInput[0]),
-					attributeNames, splitValue);
+					attributeSet.toArray(new String[0]), splitValue);
 		} else {
 			// Manually direct the left and right nodes
 			if (uniqueValues.get(0) <= value) {
 				branch.leftNode = createTree(
-						getDataSet(data, bestAttribute, uniqueValues.get(0)),
-						attributeNames, uniqueValues.get(0));
+						getDataSet2(data, bestAttribute, uniqueValues.get(0)),
+						attributeSet.toArray(new String[0]), uniqueValues.get(0));
 			} else {
 				branch.rightNode = createTree(
-						getDataSet(data, bestAttribute, uniqueValues.get(0)),
-						attributeNames, uniqueValues.get(0));
+						getDataSet2(data, bestAttribute, uniqueValues.get(0)),
+						attributeSet.toArray(new String[0]), uniqueValues.get(0));
 
 			}
 
 			if (uniqueValues.size() == 2) {
 				if (uniqueValues.get(1) <= value) {
 					branch.leftNode = createTree(
-							getDataSet(data, bestAttribute, uniqueValues.get(1)),
-							attributeNames, uniqueValues.get(1));
+							getDataSet2(data, bestAttribute, uniqueValues.get(1)),
+							attributeSet.toArray(new String[0]), uniqueValues.get(1));
 				} else {
 					branch.rightNode = createTree(
-							getDataSet(data, bestAttribute, uniqueValues.get(1)),
-							attributeNames, uniqueValues.get(1));
+							getDataSet2(data, bestAttribute, uniqueValues.get(1)),
+							attributeSet.toArray(new String[0]), uniqueValues.get(1));
 
 				}
 			}
@@ -335,6 +335,36 @@ public class DecisionTreeID3 {
 			}
 		}
 		return returnDataSet.toArray(new DataInput[0]);
+	}
+	
+	protected DataInput[] getDataSet2(DataInput[] data, int attributeLocation,
+			double value) {
+		ArrayList<DataInput> returnDataSet = new ArrayList<DataInput>();
+
+		for (int i = 0; i < data.length; i++) {
+
+			if (data[i].Attributes[attributeLocation] == value) {
+				List<Double> tempAttr = new ArrayList<Double>();
+				for(int j=0; j < data[i].Attributes.length; j++){
+					if(j!=attributeLocation){
+						tempAttr.add(data[i].Attributes[j]);
+					}
+				}
+				
+				DataInput temp = new DataInput(toDoubleArray(tempAttr),data[i].Classification);
+				
+				returnDataSet.add(temp);
+			}
+		}
+		return returnDataSet.toArray(new DataInput[0]);
+	}
+	
+	double[] toDoubleArray(List<Double> list)  {
+	    double[] ret = new double[list.size()];
+	    int i = 0;
+	    for (Double e : list)  
+	        ret[i++] = e.intValue();
+	    return ret;
 	}
 
 	/**
@@ -590,52 +620,6 @@ public class DecisionTreeID3 {
 		}
 
 	}
-
-	public void TestIrisDataSet(String fileName) {
-		DecisionTreeID3 dt = new DecisionTreeID3();
-		int ret = dt.loadData(fileName);
-
-		// TODO: this is already in the data file...read it from there
-		ArrayList<Integer> attributeSet = new ArrayList<Integer>();
-		String[] attributes = new String[] { "sepal-length", "sepal-width",
-				"petal-length", "petal-width" };
-		for (int i = 0; i < attributes.length; i++) {
-			attributeSet.add(i);
-		}
-
-		// TODO: this is a copy of the data in the HashMap...change that prop
-		DataInput[] dataTest = dt.dataSet.values().toArray(
-				new DataInput[dt.dataSet.size()]);
-
-		TreeBranch branch = dt.createTree(dataTest, attributes, null);
-
-		System.out.println("Decission Tree - using ID3:");
-		DecisionTreeID3.printTree(branch, 1);
-
-		if (ret == 0) {
-			System.out.println("Finished loading data file with "
-					+ dt.dataSet.size() + " records.");
-		}
-
-		Classifier classifier = new Classifier(attributes);
-		DataInput d = new DataInput(new double[] { 4.6, 3.4, 1.4, 0.3 }, "");
-		DataInput d2 = new DataInput(new double[] { 6.3, 2.8, 5.1, 1.5 }, "");
-		DataInput d3 = new DataInput(new double[] { 6.1, 3.0, 4.9, 1.8 }, "");
-		DataInput d4 = new DataInput(new double[] { 5.2, 3.5, 1.5, 0.2 }, "");
-		DataInput d5 = new DataInput(new double[] { 5.8, 2.7, 3.9, 1.2 }, "");
-
-		System.out.println("Classifying (4.6,3.4,1.4,0.3,Iris-setosa) :"
-				+ classifier.Classify(branch, d));
-		System.out.println("Classifying (5.2,3.5,1.5,0.2,Iris-setosa) :"
-				+ classifier.Classify(branch, d4));
-		System.out.println("Classifying (5.8,2.7,3.9,1.2,Iris-versicolor) :"
-				+ classifier.Classify(branch, d5));
-		System.out.println("Classifying (6.3,2.8,5.1,1.5,Iris-virginica) :"
-				+ classifier.Classify(branch, d2));
-		System.out.println("Classifying (6.1,3.0,4.9,1.8,Iris-virginica) :"
-				+ classifier.Classify(branch, d3));
-	}
-
 	public static String padLeft(String s, int n) {
 		return String.format("%1$" + n + "s", s);
 	}
