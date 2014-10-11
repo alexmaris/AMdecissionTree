@@ -36,7 +36,13 @@ public class Classifier {
 		if (input.Attributes[attribute] <= tree.AttributeValue) {
 			classification = Classify(tree.leftNode, input);
 		} else {
-			classification = Classify(tree.rightNode, input);
+			//TODO: figure out why this bug exists in the tree creation process
+			// Check to see that the right node exists, otherwise switch to the left
+			if(tree.rightNode != null){
+				classification = Classify(tree.rightNode, input);
+			} else {
+				classification = Classify(tree.leftNode, input);
+			}
 		}
 
 		return classification;

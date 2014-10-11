@@ -639,7 +639,6 @@ public class DecisionTreeID3 {
 		if (branch.leftNode != null) {
 			printTree(branch.leftNode, level);
 		}
-
 	}
 
 	public static String padLeft(String s, int n) {
