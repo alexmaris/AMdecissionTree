@@ -89,8 +89,8 @@ public class DecisionTreeID3 {
 
 		TreeBranch branch = new TreeBranch();
 		branch.Examples = data;
-		
-		if(data.length ==0){
+
+		if (data.length == 0) {
 			return null;
 		}
 
@@ -120,10 +120,13 @@ public class DecisionTreeID3 {
 
 		// Find best feature to split data on
 		int bestAttribute = findBestAttributeForSplit(data);
-		if (bestAttribute >= 0)
-			branch.BestAttribute = attributeNames[bestAttribute];
-		
-		List<String> attributeSet = new ArrayList<String>(Arrays.asList(attributeNames));
+		if (bestAttribute < 0)
+			bestAttribute = 0;
+			
+		branch.BestAttribute = attributeNames[bestAttribute];
+
+		List<String> attributeSet = new ArrayList<String>(
+				Arrays.asList(attributeNames));
 		attributeSet.remove(attributeNames[bestAttribute]);
 
 		// Get a set of unique values that we can populate the tree with
@@ -137,7 +140,7 @@ public class DecisionTreeID3 {
 
 		// If there's more than 2 values, try to find best value to split on
 		if (uniqueValues.size() > 2) {
-			//double splitValue = uniqueValues.get(uniqueValues.size() / 2);
+			// double splitValue = uniqueValues.get(uniqueValues.size() / 2);
 			double splitValue = findBestValueForSplit(data, bestAttribute);
 			branch.AttributeValue = splitValue;
 			branch.BestAttribute = attributeNames[bestAttribute];
@@ -147,14 +150,14 @@ public class DecisionTreeID3 {
 			for (double d : uniqueValues) {
 				// Combine all the data that should be on the left
 				if (d <= splitValue) {
-					leftData.addAll(Arrays.asList(getDataSet2(data,
-							bestAttribute, d)));
+					leftData.addAll(Arrays.asList(getDataSetWithoutAttribute(
+							data, bestAttribute, d)));
 				}
 
 				// Combine all the data that should be on the right
 				if (d > splitValue) {
-					rightData.addAll(Arrays.asList(getDataSet2(data,
-							bestAttribute, d)));
+					rightData.addAll(Arrays.asList(getDataSetWithoutAttribute(
+							data, bestAttribute, d)));
 				}
 			}
 
@@ -167,24 +170,32 @@ public class DecisionTreeID3 {
 			// Manually direct the left and right nodes
 			if (uniqueValues.get(0) <= value) {
 				branch.leftNode = createTree(
-						getDataSet2(data, bestAttribute, uniqueValues.get(0)),
-						attributeSet.toArray(new String[0]), uniqueValues.get(0));
+						getDataSetWithoutAttribute(data, bestAttribute,
+								uniqueValues.get(0)),
+						attributeSet.toArray(new String[0]),
+						uniqueValues.get(0));
 			} else {
 				branch.rightNode = createTree(
-						getDataSet2(data, bestAttribute, uniqueValues.get(0)),
-						attributeSet.toArray(new String[0]), uniqueValues.get(0));
+						getDataSetWithoutAttribute(data, bestAttribute,
+								uniqueValues.get(0)),
+						attributeSet.toArray(new String[0]),
+						uniqueValues.get(0));
 
 			}
 
 			if (uniqueValues.size() == 2) {
 				if (uniqueValues.get(1) <= value) {
 					branch.leftNode = createTree(
-							getDataSet2(data, bestAttribute, uniqueValues.get(1)),
-							attributeSet.toArray(new String[0]), uniqueValues.get(1));
+							getDataSetWithoutAttribute(data, bestAttribute,
+									uniqueValues.get(1)),
+							attributeSet.toArray(new String[0]),
+							uniqueValues.get(1));
 				} else {
 					branch.rightNode = createTree(
-							getDataSet2(data, bestAttribute, uniqueValues.get(1)),
-							attributeSet.toArray(new String[0]), uniqueValues.get(1));
+							getDataSetWithoutAttribute(data, bestAttribute,
+									uniqueValues.get(1)),
+							attributeSet.toArray(new String[0]),
+							uniqueValues.get(1));
 
 				}
 			}
@@ -195,10 +206,13 @@ public class DecisionTreeID3 {
 	}
 
 	/**
-	 * Find the split value that has the highest concentration of classifications
-	 * by splitting the dataset in half (binary search style)
-	 * @param data Array of DataInputs
-	 * @param attribute Attribute location that the search should focus on
+	 * Find the split value that has the highest concentration of
+	 * classifications by splitting the dataset in half (binary search style)
+	 * 
+	 * @param data
+	 *            Array of DataInputs
+	 * @param attribute
+	 *            Attribute location that the search should focus on
 	 * @return value that best splits the data
 	 */
 	protected double findBestValueForSplit(DataInput[] data, int attribute) {
@@ -211,52 +225,58 @@ public class DecisionTreeID3 {
 		}
 		Collections.sort(uniqueValues);
 
-		
-		double middlePoint = (uniqueValues.get(0) + uniqueValues.get(uniqueValues.size()-1))/2;
-		middlePoint = Math.round(middlePoint * 100.0)/100.0;
-		
-		// Find what split point will get us data that a majority of the same class
-		while((middlePoint)  > uniqueValues.get(0)){
+		double middlePoint = (uniqueValues.get(0) + uniqueValues
+				.get(uniqueValues.size() - 1)) / 2;
+		middlePoint = Math.round(middlePoint * 100.0) / 100.0;
+
+		// Find what split point will get us data that a majority of the same
+		// class
+		while ((middlePoint) > uniqueValues.get(0)) {
 			HashMap<String, Integer> classificationCounts = new HashMap<String, Integer>();
 			// Get a count of all the classifications in this data set
-			for(DataInput d: data){
-				if(d.Attributes[attribute] <= middlePoint){
-					if(!classificationCounts.containsKey(d.Classification)){
+			for (DataInput d : data) {
+				if (d.Attributes[attribute] <= middlePoint) {
+					if (!classificationCounts.containsKey(d.Classification)) {
 						classificationCounts.put(d.Classification, 0);
 					}
-					classificationCounts.put(d.Classification, classificationCounts.get(d.Classification) +1);
+					classificationCounts.put(d.Classification,
+							classificationCounts.get(d.Classification) + 1);
 				}
 			}
 			// See which classifications is the majority 80%+ of the dataset
 			// otherwise keep splitting the values
-			int totalCount= 0;
-			for(int classificationCount: classificationCounts.values()){
+			int totalCount = 0;
+			for (int classificationCount : classificationCounts.values()) {
 				totalCount += classificationCount;
 			}
-			
-			//TODO: clean up the code so we don't try to split the midpoint too many times
-			// If the totalCount is less than 3 we can be chasing a rabbit hole with the
+
+			// TODO: clean up the code so we don't try to split the midpoint too
+			// many times
+			// If the totalCount is less than 3 we can be chasing a rabbit hole
+			// with the
 			// middlePoint so just split at this location
-			if(totalCount < 3){
+			if (totalCount < 3) {
 				return middlePoint;
 			}
-			
-			for(String classification: classificationCounts.keySet()){
-				double frequency =(classificationCounts.get(classification).doubleValue() / totalCount); 
-				if( frequency >= 0.8 ){
+
+			for (String classification : classificationCounts.keySet()) {
+				double frequency = (classificationCounts.get(classification)
+						.doubleValue() / totalCount);
+				if (frequency >= 0.8) {
 					return middlePoint;
 				}
 			}
-			
-			// Make sure we're not splitting the values to a ridiculously small value
-			if(middlePoint <= ((uniqueValues.get(0) + middlePoint)/2.0 + 0.1)){
+
+			// Make sure we're not splitting the values to a ridiculously small
+			// value
+			if (middlePoint <= ((uniqueValues.get(0) + middlePoint) / 2.0 + 0.1)) {
 				return middlePoint;
 			}
-				// If we didn't find a good split point up to now, try re-splitting
-			middlePoint = (uniqueValues.get(0) + middlePoint)/2;
-			middlePoint = Math.round(middlePoint * 100.0)/100.0;
+			// If we didn't find a good split point up to now, try re-splitting
+			middlePoint = (uniqueValues.get(0) + middlePoint) / 2;
+			middlePoint = Math.round(middlePoint * 100.0) / 100.0;
 		}
-		
+
 		return middlePoint;
 
 	}
@@ -336,35 +356,36 @@ public class DecisionTreeID3 {
 		}
 		return returnDataSet.toArray(new DataInput[0]);
 	}
-	
-	protected DataInput[] getDataSet2(DataInput[] data, int attributeLocation,
-			double value) {
+
+	protected DataInput[] getDataSetWithoutAttribute(DataInput[] data,
+			int attributeLocation, double value) {
 		ArrayList<DataInput> returnDataSet = new ArrayList<DataInput>();
 
 		for (int i = 0; i < data.length; i++) {
 
 			if (data[i].Attributes[attributeLocation] == value) {
 				List<Double> tempAttr = new ArrayList<Double>();
-				for(int j=0; j < data[i].Attributes.length; j++){
-					if(j!=attributeLocation){
+				for (int j = 0; j < data[i].Attributes.length; j++) {
+					if (j != attributeLocation) {
 						tempAttr.add(data[i].Attributes[j]);
 					}
 				}
-				
-				DataInput temp = new DataInput(toDoubleArray(tempAttr),data[i].Classification);
-				
+
+				DataInput temp = new DataInput(toDoubleArray(tempAttr),
+						data[i].Classification);
+
 				returnDataSet.add(temp);
 			}
 		}
 		return returnDataSet.toArray(new DataInput[0]);
 	}
-	
-	double[] toDoubleArray(List<Double> list)  {
-	    double[] ret = new double[list.size()];
-	    int i = 0;
-	    for (Double e : list)  
-	        ret[i++] = e.intValue();
-	    return ret;
+
+	double[] toDoubleArray(List<Double> list) {
+		double[] ret = new double[list.size()];
+		int i = 0;
+		for (Double e : list)
+			ret[i++] = e.intValue();
+		return ret;
 	}
 
 	/**
@@ -620,6 +641,7 @@ public class DecisionTreeID3 {
 		}
 
 	}
+
 	public static String padLeft(String s, int n) {
 		return String.format("%1$" + n + "s", s);
 	}
